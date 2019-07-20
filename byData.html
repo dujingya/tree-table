@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>tree-table</title>
+    <link rel="stylesheet" href="assets/layui/css/layui.css">
+    <link rel="stylesheet" href="assets/common.css"/>
+    <script src="assets/layui/layui.js"></script>
+    <style>
+        .layui-table-view{
+            margin: 10px auto;
+        }
+    </style>
+</head>
+<body>
+<div class="layui-container layui-text">
+    <br><br>
+    <div class="layui-btn-group">
+        <button class="layui-btn" id="btn-expand">全部展开</button>
+        <button class="layui-btn" id="btn-fold">全部折叠</button>
+        <button class="layui-btn" id="btn-refresh">刷新表格</button>
+    </div>
+    <table id="table1" class="layui-table" lay-filter="table1"></table>
+    <div class="dialog">
+        <table>
+            <thead></thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- 操作列 -->
+<script type="text/html" id="oper-col">
+    <a class="layui-btn layui-btn-primary layui-btn-xs" lay-event="edit">修改</a>
+    <!--<a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">删除</a>-->
+</script>
+<script>
+    layui.config({
+        base: 'module/'
+    }).extend({
+        treetable: 'treetable-lay/treetable'
+    }).use(['layer', 'table', 'treetable'], function () {
+        var $ = layui.jquery;
+        var table = layui.table;
+        var layer = layui.layer;
+        var treetable = layui.treetable;
+
+        // 渲染表格
+        var renderTable = function () {
+            layer.load(2);
+            $.get('json/data.json', function (res) {
+                treetable.render({
+                    treeColIndex: 1,
+                    treeSpid: -1,
+                    treeIdName: 'id',
+                    treePidName: 'pid',
+                    treeDefaultClose: false,
+                    treeLinkage: false,
+                    elem: '#table1',
+                    data: res.data,
+                    page: false,
+                    cols: [[
+                        {type: 'numbers'},
+                        {field: 'name', title: 'name'},
+                        {field: 'id', title: 'id'},
+                        {field: 'sex', title: 'sex'},
+                        {field: 'pid', title: 'pid'},
+                        {templet: '#oper-col', title: 'oper'}
+                    ]],
+                    done: function () {
+                        layer.closeAll('loading');
+                    }
+                });
+            }, 'json');
+        };
+
+        renderTable();
+
+        $('#btn-expand').click(function () {
+            treetable.expandAll('#table1');
+        });
+
+        $('#btn-fold').click(function () {
+            treetable.foldAll('#table1');
+        });
+
+        $('#btn-refresh').click(function () {
+            renderTable();
+        });
+
+        //监听工具条
+        table.on('tool(table1)', function (obj) {
+            var data = obj.data;
+            var layEvent = obj.event;
+
+            if (layEvent === 'del') {
+                layer.msg('删除' + data.id);
+            } else if (layEvent === 'edit') {
+                // layer.msg('修改' + data.id);
+                layer.open({
+                    type : 1,
+                    area : [ "600px", '430px' ],
+                    title : "选择模板",
+                    maxmin : false,
+                    content : '<div><table id="templateTable"></table></div>',
+                    success : function(index, layero) {
+                        table.render({
+                            elem: '#templateTable'
+                            ,height: 300
+                            ,width:580
+                            ,margin: '10 auto'
+                            ,url: 'json/data.json' //数据接口地址
+                            ,page: true //开启分页
+                            ,cols: [[ //表头
+                                {checkbox: true}
+                                ,{field: 'name', title: '模板名称', width:200, sort: true}
+                                ,{field: 'detail', title: '描述', width:200}
+                                ,{field: 'id', title: 'ID', width:100,hide:true}
+
+                            ]]
+                        });
+                    },
+                    btn : [ '确定', '关闭' ],
+                    yes : function(index, layero) { // 点击确定按钮的回调函数
+                        var checkStatus = table.checkStatus('templateTable'); //
+                        var datas = checkStatus.data;//选中的数据
+                        console.log(datas, 1111)
+                        if(datas.length > 0){ // 选中数据的时候
+                            var selectData = datas[0];
+                            var tpid = selectData.id;
+                            var tpname = selectData.name;
+                            try{
+                                layer.close(index);//关闭对话框.
+                            }catch(e){
+                                setTimeout(function(){layer.close(index)}, 100);//延时0.1秒，对应360 7.1版本bug
+                            }
+                        }else{ // 未选中数据点击确定的时候
+                            layer.msg('未选中数据!');
+                        }
+
+                    }
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>
